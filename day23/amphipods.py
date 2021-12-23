@@ -1,6 +1,5 @@
 from typing import Callable
 from queue import PriorityQueue
-from functools import reduce
 from copy import deepcopy
 from math import floor
 
@@ -13,6 +12,7 @@ def main():
         'C': 3,
         'D': 4
     }
+
     with open('input.txt') as file:
         file.readline()
         file.readline()
@@ -22,15 +22,18 @@ def main():
             line = file.readline().strip().replace('#', '')
             for j in range(4):
                 rooms[j][i] = types[line[j]]
+
     initial = AmphipodsState(rooms, hallway)
     target = AmphipodsState(
             [[1, 1], [2, 2], [3, 3], [4, 4]],
             [0, 0, 0, 0, 0, 0, 0]
     )
+
     problem = AmphipodsProblem(initial, target)
     h: Callable[[Node], int] = problem.min_distance_to_target
-    f: Callable[[Node], int] = lambda node: node.path_cost
+    f: Callable[[Node], int] = lambda node: node.path_cost + h(node)
     print(astar(problem, f).path_cost)
+
     initial.rooms[0] = initial.rooms[0][:-1] + [4, 4] + initial.rooms[0][1:]
     initial.rooms[1] = initial.rooms[1][:-1] + [3, 2] + initial.rooms[1][1:]
     initial.rooms[2] = initial.rooms[2][:-1] + [2, 1] + initial.rooms[2][1:]
@@ -53,7 +56,7 @@ def astar(problem: 'AmphipodsProblem', f: Callable[['Node'], int]) -> 'Node':
         
         for child in problem.expand(node):
             frontier.put((f(child), child))
-
+        
         while not frontier.empty() and frontier.queue[0][1].state in expanded:
             frontier.get()
 
@@ -114,9 +117,8 @@ class AmphipodsProblem(object):
                 steps = abs(dst - i) * 2 - (1 if i == 0 or i == 6 else 0) + 1
                 distance += steps * self.energy[state.hallway[i] - 1]
         for i in range(4):
-            not_in_position = len(node.state.rooms[0])
             for position in range(len(node.state.rooms[0])):
-                if i != state.rooms[i][position] - 1:
+                if i != state.rooms[i][position] - 1 and state.rooms[i][position] != 0:
                     src, dst = (i + 2, state.rooms[i][position])\
                         if i < state.rooms[i][position] - 1 else (i + 1, state.rooms[i][position] + 1)
                     steps = abs(dst - src) * 2 + 3 + position
@@ -127,7 +129,7 @@ class AmphipodsProblem(object):
                 if i == state.rooms[i][position] - 1:
                     not_in_position -= 1
                     distance += (last_position - position) * self.energy[i]
-                    last_position = last_position + 1
+                    last_position = last_position - 1
             distance += floor(not_in_position * (not_in_position + 1) / 2) * self.energy[i]
         return distance
 
